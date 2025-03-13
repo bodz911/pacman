@@ -1,0 +1,43 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #000;
+    color: #fff;
+  }
+  
+  #game-grid {
+    display: grid;
+    grid-template-columns: repeat(20, 20px);
+    grid-template-rows: repeat(20, 20px);
+    gap: 1px;
+    margin: 20px auto;
+    width: max-content;
+  }
+  
+  .cell {
+    width: 20px;
+    height: 20px;
+    background-color: #222;
+  }
+  
+  .pacman {
+    background-color: yellow;
+    border-radius: 50%;
+  }
+  
+  .ghost {
+    border-radius: 50%;
+  }
+  
+  .ghost-1 { background-color: red; }
+  .ghost-2 { background-color: pink; }
+  .ghost-3 { background-color: cyan; }
+  .ghost-4 { background-color: orange; }
+  
+  .dot {
+    background-color: white;
+    border-radius: 50%;
+    width: 5px;
+    height: 5px;
+    margin: 7.5px;
+  }
