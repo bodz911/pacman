@@ -1,19 +1,38 @@
 const gameGrid = document.getElementById('game-grid');
 const scoreDisplay = document.getElementById('score');
+const pacman = document.getElementById('pacman');
+const ghostsContainer = document.getElementById('ghosts');
 let score = 0;
-let pacmanPosition = { x: 9, y: 9 };
-const gridSize = 20;
+let pacmanPosition = { x: 12, y: 12 };
+const gridSize = 25;
 const dots = [];
 const ghosts = [
-  { x: 5, y: 5, color: 'ghost-1' },
-  { x: 15, y: 5, color: 'ghost-2' },
-  { x: 5, y: 15, color: 'ghost-3' },
-  { x: 15, y: 15, color: 'ghost-4' },
+  { x: 5, y: 5, color: '👻', element: null },
+  { x: 20, y: 5, color: '👾', element: null },
+  { x: 5, y: 20, color: '💀', element: null },
+  { x: 20, y: 20, color: '👹', element: null }
 ];
 let gameInterval;
 let foodSpawnInterval;
+let lastTimestamp = 0;
+const frameRate = 60; // Target FPS
 
-// Create the game grid
+// Maze walls
+const walls = [
+  // Borders
+  ...Array.from({ length: gridSize }, (_, i) => ({ x: 0, y: i })),
+  ...Array.from({ length: gridSize }, (_, i) => ({ x: gridSize - 1, y: i })),
+  ...Array.from({ length: gridSize }, (_, i) => ({ x: i, y: 0 })),
+  ...Array.from({ length: gridSize }, (_, i) => ({ x: i, y: gridSize - 1 })),
+
+  // Inner walls
+  { x: 5, y: 5 }, { x: 5, y: 6 }, { x: 5, y: 7 },
+  { x: 10, y: 10 }, { x: 10, y: 11 }, { x: 10, y: 12 },
+  { x: 15, y: 15 }, { x: 15, y: 16 }, { x: 15, y: 17 },
+  { x: 20, y: 5 }, { x: 20, y: 6 }, { x: 20, y: 7 },
+];
+
+// Create the game grid with walls
 function createGrid() {
   for (let y = 0; y < gridSize; y++) {
     for (let x = 0; x < gridSize; x++) {
@@ -22,145 +41,183 @@ function createGrid() {
       cell.id = `cell-${x}-${y}`;
       gameGrid.appendChild(cell);
 
-      // Add initial dots to the grid
-      if (Math.random() > 0.7 && !(x === pacmanPosition.x && y === pacmanPosition.y)) {
-        dots.push({ x, y });
+      // Add walls
+      if (walls.some(wall => wall.x === x && wall.y === y)) {
+        cell.classList.add('wall');
+      } 
+      // Add dots
+      else if (Math.random() > 0.7 && !(x === pacmanPosition.x && y === pacmanPosition.y)) {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        dot.id = `dot-${x}-${y}`;
+        cell.appendChild(dot);
+        dots.push({ x, y, element: dot });
       }
     }
   }
+
+  // Create ghost elements
+  ghosts.forEach((ghost, index) => {
+    const ghostElement = document.createElement('div');
+    ghostElement.classList.add('entity', 'ghost');
+    ghostElement.textContent = ghost.color;
+    ghostElement.id = `ghost-${index}`;
+    ghostsContainer.appendChild(ghostElement);
+    ghost.element = ghostElement;
+    updatePosition(ghostElement, ghost.x, ghost.y);
+  });
+
+  // Position Pac-Man
+  updatePosition(pacman, pacmanPosition.x, pacmanPosition.y);
 }
 
-// Render the game state
-function render() {
-  // Clear the grid
-  document.querySelectorAll('.cell').forEach(cell => {
-    cell.innerHTML = '';
-    cell.classList.remove('pacman', 'ghost-1', 'ghost-2', 'ghost-3', 'ghost-4', 'dot');
-  });
+// Update position with smooth transition
+function updatePosition(element, x, y) {
+  element.style.transform = `translate(${x * 25}px, ${y * 25}px)`;
+}
 
-  // Render Pac-Man
-  const pacmanCell = document.getElementById(`cell-${pacmanPosition.x}-${pacmanPosition.y}`);
-  pacmanCell.classList.add('pacman');
+// Game loop for smooth animation
+function gameLoop(timestamp) {
+  if (timestamp - lastTimestamp >= 1000 / frameRate) {
+    lastTimestamp = timestamp;
+    moveGhosts();
+    checkCollisions();
+  }
+  requestAnimationFrame(gameLoop);
+}
 
-  // Render Ghosts
-  ghosts.forEach(ghost => {
-    const ghostCell = document.getElementById(`cell-${ghost.x}-${ghost.y}`);
-    ghostCell.classList.add('ghost', ghost.color);
-  });
-
-  // Render Dots
-  dots.forEach(dot => {
-    const dotCell = document.getElementById(`cell-${dot.x}-${dot.y}`);
-    const dotElement = document.createElement('div');
-    dotElement.classList.add('dot');
-    dotCell.appendChild(dotElement);
-  });
-
+// Check collisions
+function checkCollisions() {
   // Check for dot collection
   const dotIndex = dots.findIndex(dot => dot.x === pacmanPosition.x && dot.y === pacmanPosition.y);
   if (dotIndex !== -1) {
+    const dot = dots[dotIndex];
+    dot.element.remove();
     dots.splice(dotIndex, 1);
     score++;
     scoreDisplay.textContent = `Score: ${score}`;
-
-    // Check if all dots are eaten
-    if (dots.length === 0) {
-      endGame(true); // Player wins
-    }
+    
+    if (dots.length === 0) endGame(true);
   }
 
   // Check for ghost collision
-  const isCollision = ghosts.some(ghost => ghost.x === pacmanPosition.x && ghost.y === pacmanPosition.y);
-  if (isCollision) {
-    endGame(false); // Player loses
+  if (ghosts.some(ghost => ghost.x === pacmanPosition.x && ghost.y === pacmanPosition.y)) {
+    endGame(false);
   }
 }
 
 // Move Pac-Man
 function movePacman(event) {
+  let newX = pacmanPosition.x;
+  let newY = pacmanPosition.y;
+
   switch (event.key) {
-    case 'ArrowUp':
-      if (pacmanPosition.y > 0) pacmanPosition.y--;
-      break;
-    case 'ArrowDown':
-      if (pacmanPosition.y < gridSize - 1) pacmanPosition.y++;
-      break;
-    case 'ArrowLeft':
-      if (pacmanPosition.x > 0) pacmanPosition.x--;
-      break;
-    case 'ArrowRight':
-      if (pacmanPosition.x < gridSize - 1) pacmanPosition.x++;
-      break;
+    case 'ArrowUp': newY--; break;
+    case 'ArrowDown': newY++; break;
+    case 'ArrowLeft': newX--; break;
+    case 'ArrowRight': newX++; break;
+    default: return;
   }
-  render();
+
+  // Check if new position is valid
+  const cell = document.getElementById(`cell-${newX}-${newY}`);
+  if (cell && !cell.classList.contains('wall')) {
+    pacmanPosition.x = newX;
+    pacmanPosition.y = newY;
+    updatePosition(pacman, newX, newY);
+    checkCollisions();
+  }
 }
 
-// Move Ghosts (simple AI)
+// Ghost movement
 function moveGhosts() {
   const directions = [
-    { x: 1, y: 0 },
-    { x: -1, y: 0 },
-    { x: 0, y: 1 },
-    { x: 0, y: -1 },
+    { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
   ];
+  
   ghosts.forEach(ghost => {
     const direction = directions[Math.floor(Math.random() * directions.length)];
-    ghost.x += direction.x;
-    ghost.y += direction.y;
-
-    // Keep ghosts within bounds
-    ghost.x = Math.max(0, Math.min(gridSize - 1, ghost.x));
-    ghost.y = Math.max(0, Math.min(gridSize - 1, ghost.y));
+    const newX = ghost.x + direction.x;
+    const newY = ghost.y + direction.y;
+    
+    const cell = document.getElementById(`cell-${newX}-${newY}`);
+    if (cell && !cell.classList.contains('wall')) {
+      ghost.x = newX;
+      ghost.y = newY;
+      updatePosition(ghost.element, newX, newY);
+    }
   });
-  render();
 }
 
-// Spawn new food randomly
+// Spawn new food
 function spawnFood() {
-  if (dots.length < 50) { // Limit the number of dots
+  if (dots.length < 75) {
     const x = Math.floor(Math.random() * gridSize);
     const y = Math.floor(Math.random() * gridSize);
-    if (!dots.some(dot => dot.x === x && dot.y === y) && !(x === pacmanPosition.x && y === pacmanPosition.y)) {
-      dots.push({ x, y });
+    const cell = document.getElementById(`cell-${x}-${newY}`);
+    
+    if (cell && !cell.classList.contains('wall') && 
+        !dots.some(dot => dot.x === x && dot.y === y) &&
+        !ghosts.some(ghost => ghost.x === x && ghost.y === y)) {
+      const dot = document.createElement('div');
+      dot.classList.add('dot');
+      dot.id = `dot-${x}-${y}`;
+      cell.appendChild(dot);
+      dots.push({ x, y, element: dot });
     }
   }
 }
 
-// End the game
+// End game
 function endGame(isWin) {
-  clearInterval(gameInterval);
+  cancelAnimationFrame(gameLoop);
   clearInterval(foodSpawnInterval);
-  if (isWin) {
-    alert('You Win!');
-  } else {
-    alert('Game Over!');
-  }
+  alert(isWin ? "YOU WIN! 🎉" : "GAME OVER! 💀");
   resetGame();
 }
 
-// Reset the game
+// Reset game
 function resetGame() {
-  pacmanPosition = { x: 9, y: 9 };
-  ghosts.forEach((ghost, index) => {
-    ghost.x = [5, 15, 5, 15][index];
-    ghost.y = [5, 5, 15, 15][index];
-  });
+  // Clear the board
+  dots.forEach(dot => dot.element.remove());
   dots.length = 0;
+  
+  // Reset positions
+  pacmanPosition = { x: 12, y: 12 };
+  updatePosition(pacman, pacmanPosition.x, pacmanPosition.y);
+  
+  ghosts.forEach((ghost, i) => {
+    ghost.x = [5, 20, 5, 20][i];
+    ghost.y = [5, 5, 20, 20][i];
+    updatePosition(ghost.element, ghost.x, ghost.y);
+  });
+  
+  // Reset score
   score = 0;
   scoreDisplay.textContent = `Score: ${score}`;
-  createGrid();
-  render();
-  startGame();
+  
+  // Recreate dots
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      if (!walls.some(wall => wall.x === x && wall.y === y) &&
+          !(x === pacmanPosition.x && y === pacmanPosition.y) &&
+          Math.random() > 0.7) {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        dot.id = `dot-${x}-${y}`;
+        document.getElementById(`cell-${x}-${y}`).appendChild(dot);
+        dots.push({ x, y, element: dot });
+      }
+    }
+  }
+  
+  // Restart game loop
+  lastTimestamp = 0;
+  requestAnimationFrame(gameLoop);
+  foodSpawnInterval = setInterval(spawnFood, 2000);
 }
 
-// Start the game
-function startGame() {
-  gameInterval = setInterval(moveGhosts, 300); // Ghosts move every 300ms
-  foodSpawnInterval = setInterval(spawnFood, 2000); // Spawn food every 2 seconds
-}
-
-// Initialize the game
+// Initialize game
 createGrid();
-render();
 document.addEventListener('keydown', movePacman);
-startGame();
+resetGame();

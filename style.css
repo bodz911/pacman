@@ -3,41 +3,74 @@ body {
     text-align: center;
     background-color: #000;
     color: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  #game-container {
+    position: relative;
+    width: 625px; /* 25 cells * 25px */
+    height: 625px;
+    margin: 20px auto;
+    border: 3px solid #fff;
+    overflow: hidden;
   }
   
   #game-grid {
     display: grid;
-    grid-template-columns: repeat(20, 20px);
-    grid-template-rows: repeat(20, 20px);
-    gap: 1px;
-    margin: 20px auto;
-    width: max-content;
+    grid-template-columns: repeat(25, 25px);
+    grid-template-rows: repeat(25, 25px);
+    position: absolute;
+    top: 0;
+    left: 0;
   }
   
   .cell {
-    width: 20px;
-    height: 20px;
-    background-color: #222;
+    width: 25px;
+    height: 25px;
+    position: relative;
+  }
+  
+  .wall {
+    background-color: #1a1aff;
+    border-radius: 3px;
+  }
+  
+  .dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background-color: white;
+    border-radius: 50%;
+    top: 10px;
+    left: 10px;
+  }
+  
+  .entity {
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: transform 0.15s ease-out;
+    z-index: 10;
   }
   
   .pacman {
-    background-color: yellow;
-    border-radius: 50%;
+    color: yellow;
+    z-index: 20;
   }
   
   .ghost {
-    border-radius: 50%;
+    transition: transform 0.2s ease-out;
   }
   
-  .ghost-1 { background-color: red; }
-  .ghost-2 { background-color: pink; }
-  .ghost-3 { background-color: cyan; }
-  .ghost-4 { background-color: orange; }
-  
-  .dot {
-    background-color: white;
-    border-radius: 50%;
-    width: 5px;
-    height: 5px;
-    margin: 7.5px;
+  #ghosts {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
   }
